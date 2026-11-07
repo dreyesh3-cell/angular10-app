@@ -1,0 +1,48 @@
+
+name: SonarQube Cloud
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  sonarqube:
+    name: Build, Test and SonarQube
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 14
+        uses: actions/setup-node@v4
+        with:
+          node-version: '14'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Build Angular
+        working-directory: frontend
+        run: npm run build -- --configuration=production
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+
+      - name: Run Angular tests
+        working-directory: frontend
+        run: npm test -- --watch=false --browsers=ChromeHeadless --code-coverage
+
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
